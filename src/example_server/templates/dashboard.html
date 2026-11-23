@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personnel Processing Monitor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+           font-size: 14px; line-height: 1.6; background: #f7f8fa; color: #1f2328; }
+    header { background: #1f2328; color: #fff; padding: 12px 24px;
+             display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 16px; font-weight: 600; }
+    header span { font-size: 12px; color: #8b949e; letter-spacing: 0.05em; }
+    main { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+
+    /* ── Summary cards ────────────────────────────────────────────── */
+    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+             margin-bottom: 20px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;
+            padding: 16px; }
+    .card-label { font-size: 11px; color: #57606a; text-transform: uppercase;
+                  letter-spacing: 0.06em; margin-bottom: 4px; }
+    .card-value { font-size: 28px; font-weight: 700; color: #1f2328; }
+    .card-sub { font-size: 12px; color: #57606a; margin-top: 8px; line-height: 1.8; }
+
+    /* ── Filter form ──────────────────────────────────────────────── */
+    .filter-box { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;
+                  padding: 16px 20px; margin-bottom: 20px; }
+    .filter-box h2 { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+    .filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 16px; }
+    .filter-grid label { font-size: 12px; color: #57606a; display: block; margin-bottom: 3px; }
+    .filter-grid input, .filter-grid select {
+      width: 100%; border: 1px solid #d0d7de; border-radius: 4px;
+      padding: 5px 8px; font-size: 13px; color: #1f2328; background: #fff; }
+    .filter-grid input:focus, .filter-grid select:focus {
+      outline: 2px solid #3b82d4; outline-offset: 1px; border-color: #3b82d4; }
+    .filter-actions { margin-top: 12px; display: flex; gap: 8px; }
+    .btn-apply { background: #3b82d4; color: #fff; border: none; border-radius: 4px;
+                 padding: 6px 18px; font-size: 13px; cursor: pointer; }
+    .btn-apply:hover { background: #2563b0; }
+    .btn-clear { background: #fff; color: #57606a; border: 1px solid #d0d7de;
+                 border-radius: 4px; padding: 6px 18px; font-size: 13px;
+                 text-decoration: none; display: inline-block; }
+    .btn-clear:hover { background: #f7f8fa; }
+
+    /* ── Results table ────────────────────────────────────────────── */
+    .results-header { display: flex; justify-content: space-between;
+                      align-items: baseline; margin-bottom: 8px; }
+    .results-header h2 { font-size: 13px; font-weight: 600; }
+    .results-header span { font-size: 12px; color: #57606a; }
+    table { width: 100%; border-collapse: collapse; background: #fff;
+            border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+    thead { background: #f7f8fa; }
+    th { font-size: 11px; font-weight: 600; text-transform: uppercase;
+         letter-spacing: 0.05em; color: #57606a; padding: 8px 12px;
+         text-align: left; border-bottom: 1px solid #e5e7eb; }
+    th.num { text-align: right; }
+    td { padding: 7px 12px; font-size: 13px; border-bottom: 1px solid #f0f0f0;
+         vertical-align: top; }
+    td.num { text-align: right; color: #57606a; font-variant-numeric: tabular-nums; }
+    td.desc { max-width: 240px; overflow: hidden; text-overflow: ellipsis;
+              white-space: nowrap; font-size: 12px; color: #57606a; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #f7f8fa; }
+    .sinq-badge { display: inline-block; background: #fff0f0; color: #b91c1c;
+                  border: 1px solid #fca5a5; border-radius: 3px;
+                  padding: 1px 6px; font-size: 11px; font-weight: 600; }
+    .no-results { text-align: center; padding: 32px; color: #57606a; font-size: 13px; }
+
+    /* ── Pagination ───────────────────────────────────────────────── */
+    .pagination { display: flex; justify-content: center; align-items: center;
+                  gap: 16px; margin: 16px 0; }
+    .pagination a { color: #3b82d4; text-decoration: none; font-size: 13px; }
+    .pagination a:hover { text-decoration: underline; }
+    .pagination span { font-size: 13px; color: #57606a; }
+
+    /* ── Download link ────────────────────────────────────────────── */
+    .download-bar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+    .download-link { font-size: 12px; color: #3b82d4; text-decoration: none;
+                     border: 1px solid #bfdbfe; border-radius: 4px;
+                     padding: 3px 10px; background: #eff6ff; }
+    .download-link:hover { background: #dbeafe; }
+
+    /* ── Ask box ─────────────────────────────────────────────────── */
+    .ask-box { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;
+               padding: 16px 20px; margin-bottom: 20px; }
+    .ask-box h2 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+    .ask-row { display: flex; gap: 8px; align-items: flex-start; }
+    .ask-row textarea { flex: 1; border: 1px solid #d0d7de; border-radius: 4px;
+                        padding: 6px 8px; font-size: 13px; color: #1f2328;
+                        background: #fff; resize: vertical; min-height: 44px;
+                        font-family: inherit; line-height: 1.5; }
+    .ask-row textarea:focus { outline: 2px solid #3b82d4;
+                              outline-offset: 1px; border-color: #3b82d4; }
+    .btn-ask { background: #3b82d4; color: #fff; border: none; border-radius: 4px;
+               padding: 7px 18px; font-size: 13px; cursor: pointer;
+               white-space: nowrap; align-self: flex-start; }
+    .btn-ask:hover { background: #2563b0; }
+    .btn-ask:disabled { background: #93b8e8; cursor: not-allowed; }
+    .ask-answer { margin-top: 10px; padding: 10px 12px;
+                  background: #f7f8fa; border: 1px solid #e5e7eb;
+                  border-radius: 4px; font-size: 13px; line-height: 1.6;
+                  color: #1f2328; white-space: pre-wrap; }
+    .ask-answer--thinking { color: #57606a; font-style: italic; }
+    .ask-answer--error { color: #991b1b; }
+
+    /* ── SINQ error breakdown ─────────────────────────────────────── */
+    .sinq-breakdown { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;
+                      padding: 12px 16px; margin-bottom: 14px; }
+    .sinq-breakdown h2 { font-size: 13px; font-weight: 600; margin-bottom: 2px;
+                         display: inline; }
+    .sinq-breakdown .bd-meta { font-size: 12px; color: #57606a; margin-bottom: 8px; }
+
+    /* outer group row */
+    .bd-outer { margin-bottom: 6px; }
+    .bd-outer-head { display: flex; align-items: center; gap: 8px; padding: 4px 0 2px; }
+    .sinq-link { color: #3b82d4; text-decoration: none; font-weight: 600;
+                 font-family: monospace; font-size: 13px; min-width: 3.2em;
+                 display: inline-block; }
+    .sinq-link:hover { text-decoration: underline; }
+    .sinq-link--active { color: #b91c1c; font-weight: 700; }
+    .sinq-link--active::after { content: " ●"; font-size: 9px; }
+    .bd-total { font-size: 12px; color: #57606a; font-variant-numeric: tabular-nums; }
+
+    /* inner sub-group rows */
+    .bd-inner { padding-left: 20px; }
+    .bd-row { display: flex; align-items: center; gap: 8px; padding: 2px 0;
+              border-bottom: 1px solid #f4f4f4; }
+    .bd-row:last-of-type { border-bottom: none; }
+    .bd-row:hover { background: #f7f9ff; border-radius: 3px; }
+    .bd-docu { font-family: monospace; font-size: 12px; color: #57606a;
+               min-width: 3.2em; }
+    .bd-count { font-size: 12px; color: #57606a; min-width: 3.2em;
+                text-align: right; font-variant-numeric: tabular-nums; }
+    .bar-wrap { width: 80px; background: #eef0f3; border-radius: 3px;
+                height: 7px; display: inline-block; vertical-align: middle;
+                flex-shrink: 0; }
+    .bar-fill { height: 7px; border-radius: 3px; background: #3b82d4;
+                display: inline-block; }
+    .bar-fill--active { background: #b91c1c; }
+    .bd-desc { font-size: 11px; color: #57606a; flex: 1;
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bd-desc--sentinel { font-style: italic; color: #8b949e; }
+    .bd-toggle { font-size: 12px; color: #3b82d4; text-decoration: none;
+                 display: inline-block; margin-top: 6px; }
+    .bd-toggle:hover { text-decoration: underline; }
+    .sinq-empty { font-size: 13px; color: #57606a; padding: 4px 0; }
+
+    /* ── Active-filter banner ─────────────────────────────────────── */
+    .filter-banner { background: #eff6ff; border: 1px solid #bfdbfe;
+                     border-radius: 6px; padding: 8px 14px; margin-bottom: 10px;
+                     display: flex; align-items: center; gap: 10px;
+                     font-size: 13px; }
+    .filter-banner strong { font-family: monospace; font-weight: 700; color: #1e40af; }
+    .filter-banner .fb-count { color: #374151; }
+    .filter-banner .fb-clear { margin-left: auto; color: #b91c1c;
+                                text-decoration: none; font-size: 12px;
+                                border: 1px solid #fca5a5; border-radius: 3px;
+                                padding: 2px 8px; }
+    .filter-banner .fb-clear:hover { background: #fff0f0; }
+
+    /* ── Error state ──────────────────────────────────────────────── */
+    .error-box { background: #fff0f0; border: 1px solid #fca5a5; border-radius: 6px;
+                 padding: 24px; text-align: center; color: #7f1d1d; }
+    .error-box h2 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+    .error-box p { font-size: 13px; color: #991b1b; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Personnel Processing Monitor</h1>
+  <span>READ-ONLY</span>
+</header>
+
+<main>
+
+{% if error %}
+  <div class="error-box">
+    <h2>⚠ Data file unavailable</h2>
+    <p>The data file could not be read. Please contact your system administrator.</p>
+  </div>
+{% else %}
+
+  <!-- Summary cards (always full-file) -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Valid Records</div>
+      <div class="card-value">{{ summary.total_valid | format_int }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Parse Errors</div>
+      <div class="card-value">{{ summary.parse_error_count | format_int }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">SINQ Errors</div>
+      <div class="card-value">{{ summary.sinq_error_count | format_int }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">By Source</div>
+      <div class="card-value">&nbsp;</div>
+      <div class="card-sub">
+        {% for src, cnt in summary.by_source.items() %}
+          {{ src }}: {{ cnt | format_int }}<br/>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Ask a question (natural-language query via watsonx.ai) -->
+  <div class="ask-box">
+    <h2>Ask a question about this data</h2>
+    <div class="ask-row">
+      <textarea id="ask-input" rows="2"
+        placeholder="e.g. How many total SINQ errors are there?  Which error code appears most often?  How many records have error 507?"></textarea>
+      <button class="btn-ask" id="ask-btn" type="button">Ask</button>
+    </div>
+    <div class="ask-answer ask-answer--thinking" id="ask-answer" style="display:none"></div>
+  </div>
+
+  <script>
+  (function () {
+    var btn    = document.getElementById('ask-btn');
+    var input  = document.getElementById('ask-input');
+    var answer = document.getElementById('ask-answer');
+
+    function setAnswer(text, cssClass) {
+      answer.textContent = text;
+      answer.className   = 'ask-answer' + (cssClass ? ' ' + cssClass : '');
+      answer.style.display = 'block';
+    }
+
+    btn.addEventListener('click', function () {
+      var q = input.value.trim();
+      if (!q) { input.focus(); return; }
+
+      btn.disabled = true;
+      setAnswer('Asking\u2026', 'ask-answer--thinking');
+
+      fetch('/dashboard/ask', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ question: q })
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.answer) {
+          setAnswer(data.answer, '');
+        } else if (data.error) {
+          setAnswer(data.error, 'ask-answer--error');
+        } else {
+          setAnswer('No answer returned.', 'ask-answer--error');
+        }
+      })
+      .catch(function () {
+        setAnswer('Could not reach the server. Please try again.', 'ask-answer--error');
+      })
+      .finally(function () { btn.disabled = false; });
+    });
+
+    /* Allow Ctrl+Enter / Cmd+Enter to submit */
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { btn.click(); }
+    });
+  }());
+  </script>
+
+  <!-- Filter form -->
+  <div class="filter-box">
+    <h2>Filters</h2>
+    <form method="get" action="/dashboard">
+      <div class="filter-grid">
+        <div>
+          <label for="f_gvt">GVT Sub-Agency</label>
+          <input id="f_gvt" name="gvt_sub_agency" type="text"
+                 value="{{ filters.gvt_sub_agency or '' }}" placeholder="e.g. 01" />
+        </div>
+        <div>
+          <label for="f_co">Company</label>
+          <input id="f_co" name="company" type="text"
+                 value="{{ filters.company or '' }}" placeholder="e.g. AG" />
+        </div>
+        <div>
+          <label for="f_src">Source</label>
+          <select id="f_src" name="source">
+            <option value="">— any —</option>
+            <option value="EmpowHR"
+              {% if filters.source == "EmpowHR" %}selected{% endif %}>EmpowHR</option>
+            <option value="Employee Personal Page"
+              {% if filters.source == "Employee Personal Page" %}selected{% endif %}>Employee Personal Page</option>
+            <option value="Unknown"
+              {% if filters.source == "Unknown" %}selected{% endif %}>Unknown</option>
+          </select>
+        </div>
+        <div>
+          <label for="f_docu">Doc Type</label>
+          <input id="f_docu" name="docu_type" type="text"
+                 value="{{ filters.docu_type or '' }}" placeholder="e.g. 030" />
+        </div>
+        <div>
+          <label for="f_sinq">SINQ Error Code</label>
+          <input id="f_sinq" name="sinq_error" type="text"
+                 value="{{ filters.sinq_error or '' }}" placeholder="e.g. 008" />
+        </div>
+        <div>
+          <label for="f_has">Has SINQ Error</label>
+          <select id="f_has" name="has_sinq_error">
+            <option value="">— any —</option>
+            <option value="true"
+              {% if filters.has_sinq_error == "true" %}selected{% endif %}>Yes</option>
+            <option value="false"
+              {% if filters.has_sinq_error == "false" %}selected{% endif %}>No</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-actions">
+        <button type="submit" class="btn-apply">Apply</button>
+        <a href="/dashboard" class="btn-clear">Clear</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- SINQ error breakdown (always full-file counts, grouped by SINQ_ERROR then DOCU_TYPE) -->
+  <div class="sinq-breakdown">
+    {% set total_sinq = sinq_groups | sum(attribute='total') %}
+    {% set distinct   = sinq_groups | length %}
+    <h2>SINQ Error Breakdown</h2>
+    <div class="bd-meta">
+      {% if sinq_groups %}
+        {{ distinct }} distinct code{{ 's' if distinct != 1 else '' }},
+        {{ total_sinq | format_int }} total error{{ 's' if total_sinq != 1 else '' }} —
+        click a code to filter the table below
+      {% else %}
+        <span class="sinq-empty">No SINQ errors in this file</span>
+      {% endif %}
+    </div>
+    {% if sinq_groups %}
+      {% set max_count = sinq_groups[0].total %}
+      {% set visible = (sinq_groups if show_all else sinq_groups_top) %}
+      {% for outer in visible %}
+        {% set is_active = (filters.sinq_error == outer.code) %}
+        {% set bar_pct   = (outer.total / max_count * 100) | round(1) %}
+        <div class="bd-outer">
+          <!-- Outer heading: SINQ_ERROR code, total count, filter link -->
+          <div class="bd-outer-head">
+            <a href="/dashboard?sinq_error={{ outer.code | urlencode }}#results"
+               class="sinq-link{% if is_active %} sinq-link--active{% endif %}">{{ outer.code }}</a>
+            <span class="bd-total">{{ outer.total | format_int }} total</span>
+            <span class="bar-wrap">
+              <span class="bar-fill{% if is_active %} bar-fill--active{% endif %}"
+                    style="width:{{ bar_pct }}%"></span>
+            </span>
+          </div>
+          <!-- Inner sub-group rows: one per DOCU_TYPE -->
+          <div class="bd-inner">
+            {% for sub in outer.groups %}
+              {% set sub_bar = (sub.count / outer.total * 100) | round(1) %}
+              <div class="bd-row">
+                <span class="bd-docu">{{ sub.docu_type if sub.docu_type else '—' }}</span>
+                <span class="bd-count">{{ sub.count | format_int }}</span>
+                <span class="bar-wrap">
+                  <span class="bar-fill{% if is_active %} bar-fill--active{% endif %}"
+                        style="width:{{ sub_bar }}%"></span>
+                </span>
+                <span class="bd-desc{% if sub.description == 'No approved reference available' %} bd-desc--sentinel{% endif %}"
+                      title="{{ sub.description }}">{{ sub.description }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+      {% if sinq_groups_rest %}
+        {% if show_all %}
+          <a href="{{ show_fewer_url }}" class="bd-toggle">&#9650; Show fewer</a>
+        {% else %}
+          <a href="{{ show_all_url }}" class="bd-toggle">&#9660; Show all {{ distinct }} codes</a>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <!-- Active-filter banner + results anchor -->
+  {% if filters.sinq_error %}
+  <div class="filter-banner">
+    <span>Filtered by SINQ error:</span>
+    <strong>{{ filters.sinq_error }}</strong>
+    <span class="fb-count">{{ matched_count | format_int }} matching record{{ 's' if matched_count != 1 else '' }}</span>
+    <a href="/dashboard" class="fb-clear">&#x2715; Clear filter</a>
+  </div>
+  {% endif %}
+
+  <section id="results">
+  <div class="results-header">
+    <h2>{{ matched_count | format_int }} matching record{{ 's' if matched_count != 1 else '' }}</h2>
+    {% if matched_count > 0 %}
+    <span>showing {{ offset + 1 }}–{{ offset + rows | length }} of {{ matched_count | format_int }}</span>
+    {% endif %}
+  </div>
+
+  <!-- Download link — preserves active filters -->
+  <div class="download-bar">
+    <a class="download-link" href="{{ download_url }}">&#8659; Download CSV</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="num">Line</th>
+        <th>GVT Sub-Agency</th>
+        <th>Company</th>
+        <th>Doc Type</th>
+        <th>Source</th>
+        <th>SINQ Error</th>
+        <th>Approved Description</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% if rows %}
+      {% for row in rows %}
+      <tr>
+        <td class="num">{{ row.line_number }}</td>
+        <td>{{ row.gvt_sub_agency }}</td>
+        <td>{{ row.company }}</td>
+        <td>{% if row.docu_type %}<span style="font-family:monospace">{{ row.docu_type }}</span>{% endif %}</td>
+        <td>{{ row.source }}</td>
+        <td>{% if row.sinq_error %}<span class="sinq-badge">{{ row.sinq_error }}</span>{% endif %}</td>
+        <td class="desc" title="{{ row.ref_description }}">{{ row.ref_description }}</td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="7" class="no-results">No records match the current filters.</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+
+  <!-- Pagination -->
+  {% if has_prev or has_more %}
+  <div class="pagination">
+    {% if has_prev %}
+      <a href="{{ prev_url }}">&larr; Prev</a>
+    {% else %}
+      <span style="color:#d0d7de">&larr; Prev</span>
+    {% endif %}
+    <span>Page {{ page }} of {{ total_pages }}</span>
+    {% if has_more %}
+      <a href="{{ next_url }}">Next &rarr;</a>
+    {% else %}
+      <span style="color:#d0d7de">Next &rarr;</span>
+    {% endif %}
+  </div>
+  {% endif %}
+  </section>
+
+{% endif %}
+</main>
+
+</body>
+</html>

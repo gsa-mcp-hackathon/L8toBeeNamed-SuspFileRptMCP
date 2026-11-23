@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Record Detail — Personnel Processing Monitor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+           font-size: 14px; line-height: 1.6; background: #f7f8fa; color: #1f2328; }
+    header { background: #1f2328; color: #fff; padding: 12px 24px;
+             display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 16px; font-weight: 600; }
+    header span { font-size: 12px; color: #8b949e; letter-spacing: 0.05em; }
+    main { max-width: 760px; margin: 24px auto; padding: 0 16px; }
+
+    /* ── Back nav ─────────────────────────────────────────────────── */
+    .back-nav { margin-bottom: 16px; }
+    .back-link { color: #3b82d4; text-decoration: none; font-size: 13px; }
+    .back-link:hover { text-decoration: underline; }
+
+    /* ── Detail card ──────────────────────────────────────────────── */
+    .detail-card { background: #fff; border: 1px solid #e5e7eb;
+                   border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
+
+    /* Card title bar */
+    .card-title { display: flex; justify-content: space-between;
+                  align-items: center; padding: 14px 20px;
+                  border-bottom: 1px solid #e5e7eb; background: #f7f8fa; }
+    .card-title h2 { font-size: 14px; font-weight: 600; }
+    .card-title .readonly-badge { font-size: 11px; color: #57606a;
+                                   letter-spacing: 0.06em; text-transform: uppercase; }
+
+    /* Section header rows */
+    .section-header td { background: #f0f3f7; font-size: 11px; font-weight: 700;
+                          text-transform: uppercase; letter-spacing: 0.07em;
+                          color: #57606a; padding: 6px 20px;
+                          border-bottom: 1px solid #e5e7eb;
+                          border-top: 1px solid #e5e7eb; }
+    .detail-card table:first-of-type .section-header:first-child td {
+      border-top: none;
+    }
+
+    /* Field rows */
+    table { width: 100%; border-collapse: collapse; }
+    tr.field-row { border-bottom: 1px solid #f0f0f0; }
+    tr.field-row:last-child { border-bottom: none; }
+    th.field-label { width: 38%; font-size: 12px; font-weight: 600;
+                     color: #57606a; padding: 10px 20px; text-align: left;
+                     background: #fafbfc; border-right: 1px solid #f0f0f0;
+                     vertical-align: top; }
+    td.field-value { padding: 10px 20px; font-size: 13px; color: #1f2328; }
+    td.field-value.mono { font-family: monospace; }
+
+    /* ── SINQ badge ───────────────────────────────────────────────── */
+    .sinq-badge { display: inline-block; background: #fff0f0; color: #b91c1c;
+                  border: 1px solid #fca5a5; border-radius: 3px;
+                  padding: 1px 6px; font-size: 11px; font-weight: 600; }
+    .sinq-yes { color: #b91c1c; font-weight: 600; }
+    .sinq-no  { color: #57606a; }
+    .em-dash  { color: #8b949e; }
+
+    /* ── Read-only notice ─────────────────────────────────────────── */
+    .readonly-notice { font-size: 12px; color: #57606a; text-align: right;
+                       letter-spacing: 0.03em; margin-top: 4px; }
+
+    /* ── Error states ─────────────────────────────────────────────── */
+    .error-box { background: #fff0f0; border: 1px solid #fca5a5; border-radius: 6px;
+                 padding: 24px; text-align: center; color: #7f1d1d; }
+    .error-box h2 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+    .error-box p  { font-size: 13px; color: #991b1b; }
+    .error-box .back-link { display: inline-block; margin-top: 16px; }
+
+    /* ── Not-found state ──────────────────────────────────────────── */
+    .notfound-box { background: #fffbeb; border: 1px solid #fde68a;
+                    border-radius: 6px; padding: 24px; text-align: center;
+                    color: #78350f; }
+    .notfound-box h2 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+    .notfound-box p  { font-size: 13px; color: #92400e; }
+    .notfound-box .back-link { display: inline-block; margin-top: 16px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Personnel Processing Monitor</h1>
+  <span>READ-ONLY</span>
+</header>
+
+<main>
+
+{% if error == "bad_request" %}
+  <div class="error-box">
+    <h2>&#x26A0; Invalid record identifier</h2>
+    <p>The record identifier in the URL is not valid. Please return to the dashboard and use a Review link.</p>
+    <a class="back-link" href="/dashboard">&#8592; Back to dashboard</a>
+  </div>
+
+{% elif error == "unavailable" %}
+  <div class="error-box">
+    <h2>&#x26A0; Data file unavailable</h2>
+    <p>The data file could not be read. Please contact your system administrator.</p>
+    <a class="back-link" href="{{ back_url }}">&#8592; Back to results</a>
+  </div>
+
+{% elif error == "not_found" %}
+  <div class="notfound-box">
+    <h2>Record not found</h2>
+    <p>No record exists at line {{ line_number }}. It may have been removed or the file may have changed.</p>
+    <a class="back-link" href="{{ back_url }}">&#8592; Back to results</a>
+  </div>
+
+{% else %}
+  <div class="back-nav">
+    <a class="back-link" href="{{ back_url }}">&#8592; Back to results</a>
+  </div>
+
+  <div class="detail-card">
+    <div class="card-title">
+      <h2>Record Detail &mdash; Line {{ record.line_number }}</h2>
+      <span class="readonly-badge">Read-only</span>
+    </div>
+
+    <table>
+
+      <!-- ── Section: Record Identifier ─────────────────────────── -->
+      <tr class="section-header"><td colspan="2">Record Identifier</td></tr>
+      <tr class="field-row">
+        <th class="field-label" scope="row">Line Number</th>
+        <td class="field-value mono">{{ record.line_number }}</td>
+      </tr>
+
+      <!-- ── Section: Classification ────────────────────────────── -->
+      <tr class="section-header"><td colspan="2">Classification</td></tr>
+      <tr class="field-row">
+        <th class="field-label" scope="row">GVT Sub-Agency</th>
+        <td class="field-value">
+          {% if record.gvt_sub_agency %}{{ record.gvt_sub_agency }}{% else %}<span class="em-dash">&mdash;</span>{% endif %}
+        </td>
+      </tr>
+      <tr class="field-row">
+        <th class="field-label" scope="row">Company</th>
+        <td class="field-value">
+          {% if record.company %}{{ record.company }}{% else %}<span class="em-dash">&mdash;</span>{% endif %}
+        </td>
+      </tr>
+      <tr class="field-row">
+        <th class="field-label" scope="row">Source</th>
+        <td class="field-value">{{ record.source }}</td>
+      </tr>
+
+      <!-- ── Section: SINQ ───────────────────────────────────────── -->
+
+      <tr class="section-header"><td colspan="2">SINQ</td></tr>
+      <tr class="field-row">
+        <th class="field-label" scope="row">Document Type</th>
+        <td class="field-value mono">
+          {% if record.docu_type %}{{ record.docu_type }}{% else %}<span class="em-dash">&mdash;</span>{% endif %}
+        </td>
+      </tr>
+      <tr class="field-row">
+        <th class="field-label" scope="row">SINQ Error Code</th>
+        <td class="field-value">
+          {% if record.sinq_error %}
+            <span class="sinq-badge">{{ record.sinq_error }}</span>
+          {% else %}
+            <span class="em-dash">&mdash;</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr class="field-row">
+        <th class="field-label" scope="row">Approved Description</th>
+        <td class="field-value">{{ record.ref_description }}</td>
+      </tr>
+      <tr class="field-row">
+        <th class="field-label" scope="row">Has SINQ Error</th>
+        <td class="field-value">
+          {% if record.has_sinq_error %}
+            <span class="sinq-yes">Yes</span>
+          {% else %}
+            <span class="sinq-no">No</span>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <p class="readonly-notice">Read-only &mdash; no actions available.</p>
+
+{% endif %}
+
+</main>
+
+</body>
+</html>
